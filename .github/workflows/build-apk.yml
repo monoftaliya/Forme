@@ -1,0 +1,52 @@
+name: Build SwordHelper APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'swordhelper-updated.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare project
+        run: |
+          unzip -o swordhelper-updated.zip -d extracted
+          test -f extracted/swordhelper/index.html
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          mkdir -p www
+          cp -r extracted/swordhelper/. www/
+          npx cap init SwordHelper com.personal.swordhelper --web-dir=www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwordHelper-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
